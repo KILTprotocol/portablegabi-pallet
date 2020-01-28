@@ -1,56 +1,46 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-/// A pallet template with necessary imports
-
-/// Feel free to remove or edit this file as needed.
-/// If you change the name of this file, make sure to update its references in runtime/src/lib.rs
-/// If you remove this file, you can remove those references
-
-
-/// For more guidance on FRAME pallets, see the example.
-/// https://github.com/paritytech/substrate/blob/master/frame/example/src/lib.rs
-
-use frame_support::{decl_module, decl_storage, decl_event, dispatch::DispatchResult};
+use frame_support::{decl_module, decl_storage, decl_event, dispatch::DispatchResult, ensure};
 use system::ensure_signed;
+use rstd::vec::Vec;
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait {
-	// TODO: Add other types and constants required configure this pallet.
-
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
-// This pallet's storage items.
 decl_storage! {
 	trait Store for Module<T: Trait> as TemplateModule {
-		// Just a dummy storage item.
-		// Here we are declaring a StorageValue, `Something` as a Option<u32>
-		// `get(fn something)` is the default getter which returns either the stored `u32` or `None` if nothing stored
-		Something get(fn something): Option<u32>;
+		/// AccumulatorList contains all accumulators. 
+		AccumulatorList get(accumulator_list): map (T::AccountId, u64) => Vec<u8>;
+		AccumulatorCount get(accumulator_count): map T::AccountId => u64;
 	}
 }
 
-// The pallet's dispatchable functions.
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		// Initializing events
-		// this is needed only if you are using events in your pallet
 		fn deposit_event() = default;
 
-		// Just a dummy entry point.
-		// function that can be called by the external world as an extrinsics call
-		// takes a parameter of the type `AccountId`, stores it and emits an event
-		pub fn do_something(origin, something: u32) -> DispatchResult {
-			// TODO: You only need this if you want to check it was signed.
-			let who = ensure_signed(origin)?;
+		/// Updates the attestation
+		pub fn update_accumulator(origin, accumulator: Vec<u8>) -> DispatchResult {
+			let attester = ensure_signed(origin)?;
 
-			// TODO: Code to execute when something calls this.
-			// For example: the following line stores the passed in u32 in the storage
-			Something::put(something);
+			let counter = if !<AccumulatorCount<T>>::exists(&attester) {
+				0
+			} else {
+				<AccumulatorCount<T>>::get(&attester)
+			};
+			
+			let next = counter.checked_add(1).ok_or("Overflow increasing accumulator index")?;
+			ensure!(!<AccumulatorList<T>>::exists((&attester, next)),
+					"Inconsistent accumulator counter");
 
-			// here we are raising the Something event
-			Self::deposit_event(RawEvent::SomethingStored(something, who));
+			<AccumulatorList<T>>::insert((&attester, counter), &accumulator);
+			<AccumulatorCount<T>>::insert(&attester, next);
+
+			Self::deposit_event(RawEvent::Updated(attester, next, accumulator));
 			Ok(())
 		}
 	}
@@ -58,10 +48,8 @@ decl_module! {
 
 decl_event!(
 	pub enum Event<T> where AccountId = <T as system::Trait>::AccountId {
-		// Just a dummy event.
-		// Event `Something` is declared with a parameter of the type `u32` and `AccountId`
-		// To emit this event, we call the deposit funtion, from our runtime funtions
-		SomethingStored(u32, AccountId),
+		/// An accumulator has been updated. Therefore an attestation has be revoked
+		Updated(AccountId, u64, Vec<u8>),
 	}
 );
 
@@ -112,7 +100,7 @@ mod tests {
 	impl Trait for Test {
 		type Event = ();
 	}
-	type TemplateModule = Module<Test>;
+	type PortablegabiModule = Module<Test>;
 
 	// This function basically just builds a genesis storage key/value store according to
 	// our desired mockup.
@@ -123,11 +111,19 @@ mod tests {
 	#[test]
 	fn it_works_for_default_value() {
 		new_test_ext().execute_with(|| {
-			// Just a dummy test for the dummy funtion `do_something`
+			// Just a dummy test for the dummy function `do_something`
 			// calling the `do_something` function with a value 42
-			assert_ok!(TemplateModule::do_something(Origin::signed(1), 42));
+			assert_ok!(PortablegabiModule::update_accumulator(Origin::signed(1), vec![1u8, 2u8, 3u8]));
+			assert_ok!(PortablegabiModule::update_accumulator(Origin::signed(1), vec![4u8, 5u8, 6u8]));
+			assert_ok!(PortablegabiModule::update_accumulator(Origin::signed(1), vec![7u8, 8u8, 9u8]));
+
+			// There should be three accumulators inside the store
+			assert_eq!(PortablegabiModule::accumulator_count(1), 3);
+
 			// asserting that the stored value is equal to what we stored
-			assert_eq!(TemplateModule::something(), Some(42));
+			assert_eq!(PortablegabiModule::accumulator_list((1, 0)), vec![1u8, 2u8, 3u8]);
+			assert_eq!(PortablegabiModule::accumulator_list((1, 1)), vec![4u8, 5u8, 6u8]);
+			assert_eq!(PortablegabiModule::accumulator_list((1, 2)), vec![7u8, 8u8, 9u8]);
 		});
 	}
 }
