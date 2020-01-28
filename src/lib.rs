@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_module, decl_storage, decl_event, dispatch::DispatchResult};
+use frame_support::{decl_module, decl_storage, decl_event, dispatch::DispatchResult, ensure};
 use system::ensure_signed;
 use rstd::vec::Vec;
 
@@ -12,7 +12,8 @@ pub trait Trait: system::Trait {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as TemplateModule {
-		Accumulators get(accumulators): map T::AccountId => Vec<u8>;
+		AccumulatorList get(accumulator_list): map (T::AccountId, u64) => Vec<u8>;
+		AccumulatorCount get(accumulator_count): map T::AccountId => u64;
 	}
 }
 
@@ -25,9 +26,20 @@ decl_module! {
 		pub fn update_accumulator(origin, accumulator: Vec<u8>) -> DispatchResult {
 			let attester = ensure_signed(origin)?;
 
-			Accumulators::<T>::insert(attester.clone(), accumulator.clone());
+			let counter = if !<AccumulatorCount<T>>::exists(&attester) {
+				0
+			} else {
+				<AccumulatorCount<T>>::get(&attester)
+			};
+			
+			let next = counter.checked_add(1).ok_or("Overflow increasing accumulator index")?;
+			ensure!(!<AccumulatorList<T>>::exists((&attester, next)),
+					"Inconsistent accumulator counter");
 
-			Self::deposit_event(RawEvent::Updated(attester, accumulator));
+			<AccumulatorList<T>>::insert((&attester, counter), &accumulator);
+			<AccumulatorCount<T>>::insert(&attester, next);
+
+			Self::deposit_event(RawEvent::Updated(attester, next, accumulator));
 			Ok(())
 		}
 	}
@@ -36,7 +48,7 @@ decl_module! {
 decl_event!(
 	pub enum Event<T> where AccountId = <T as system::Trait>::AccountId {
 		/// An accumulator has been updated. Therefore an attestation has be revoked
-		Updated(AccountId, Vec<u8>),
+		Updated(AccountId, u64, Vec<u8>),
 	}
 );
 
