@@ -12,6 +12,7 @@ pub trait Trait: system::Trait {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as TemplateModule {
+		/// AccumulatorList contains all accumulators. 
 		AccumulatorList get(accumulator_list): map (T::AccountId, u64) => Vec<u8>;
 		AccumulatorCount get(accumulator_count): map T::AccountId => u64;
 	}
@@ -99,7 +100,7 @@ mod tests {
 	impl Trait for Test {
 		type Event = ();
 	}
-	type TemplateModule = Module<Test>;
+	type PortablegabiModule = Module<Test>;
 
 	// This function basically just builds a genesis storage key/value store according to
 	// our desired mockup.
@@ -112,9 +113,17 @@ mod tests {
 		new_test_ext().execute_with(|| {
 			// Just a dummy test for the dummy function `do_something`
 			// calling the `do_something` function with a value 42
-			assert_ok!(TemplateModule::do_something(Origin::signed(1), 42));
+			assert_ok!(PortablegabiModule::update_accumulator(Origin::signed(1), vec![1u8, 2u8, 3u8]));
+			assert_ok!(PortablegabiModule::update_accumulator(Origin::signed(1), vec![4u8, 5u8, 6u8]));
+			assert_ok!(PortablegabiModule::update_accumulator(Origin::signed(1), vec![7u8, 8u8, 9u8]));
+
+			// There should be three accumulators inside the store
+			assert_eq!(PortablegabiModule::accumulator_count(1), 3);
+
 			// asserting that the stored value is equal to what we stored
-			assert_eq!(TemplateModule::something(), Some(42));
+			assert_eq!(PortablegabiModule::accumulator_list((1, 0)), vec![1u8, 2u8, 3u8]);
+			assert_eq!(PortablegabiModule::accumulator_list((1, 1)), vec![4u8, 5u8, 6u8]);
+			assert_eq!(PortablegabiModule::accumulator_list((1, 2)), vec![7u8, 8u8, 9u8]);
 		});
 	}
 }
