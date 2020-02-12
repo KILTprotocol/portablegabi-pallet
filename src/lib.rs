@@ -12,8 +12,12 @@ pub trait Trait: system::Trait {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as TemplateModule {
-		/// AccumulatorList contains all accumulators. 
-		AccumulatorList get(accumulator_list): map (T::AccountId, u64) => Vec<u8>;
+		/// The AccumulatorList contains all accumulator. It is a map which
+		/// maps an account id and an index to an accumulator
+		AccumulatorList get(accumulator_list): map (T::AccountId, u64) => Option<Vec<u8>>;
+
+		/// The AccumulatorCounter stores for each attester the number of
+		/// accumulator updates.
 		AccumulatorCount get(accumulator_count): map T::AccountId => u64;
 	}
 }
@@ -121,9 +125,9 @@ mod tests {
 			assert_eq!(PortablegabiModule::accumulator_count(1), 3);
 
 			// asserting that the stored value is equal to what we stored
-			assert_eq!(PortablegabiModule::accumulator_list((1, 0)), vec![1u8, 2u8, 3u8]);
-			assert_eq!(PortablegabiModule::accumulator_list((1, 1)), vec![4u8, 5u8, 6u8]);
-			assert_eq!(PortablegabiModule::accumulator_list((1, 2)), vec![7u8, 8u8, 9u8]);
+			assert_eq!(PortablegabiModule::accumulator_list((1, 0)), Some(vec![1u8, 2u8, 3u8]));
+			assert_eq!(PortablegabiModule::accumulator_list((1, 1)), Some(vec![4u8, 5u8, 6u8]));
+			assert_eq!(PortablegabiModule::accumulator_list((1, 2)), Some(vec![7u8, 8u8, 9u8]));
 		});
 	}
 }
