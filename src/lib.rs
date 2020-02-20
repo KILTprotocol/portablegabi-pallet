@@ -1,8 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_module, decl_storage, decl_event, dispatch::DispatchResult, ensure};
-use system::ensure_signed;
+use frame_support::{decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure};
 use rstd::vec::Vec;
+use system::ensure_signed;
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait {
@@ -36,7 +36,7 @@ decl_module! {
 			} else {
 				<AccumulatorCount<T>>::get(&attester)
 			};
-			
+
 			let next = counter.checked_add(1).ok_or("Overflow increasing accumulator index")?;
 			ensure!(!<AccumulatorList<T>>::exists((&attester, next)),
 					"Inconsistent accumulator counter");
@@ -51,7 +51,10 @@ decl_module! {
 }
 
 decl_event!(
-	pub enum Event<T> where AccountId = <T as system::Trait>::AccountId {
+	pub enum Event<T>
+	where
+		AccountId = <T as system::Trait>::AccountId,
+	{
 		/// An accumulator has been updated. Therefore an attestation has be revoked
 		Updated(AccountId, u64, Vec<u8>),
 	}
@@ -62,10 +65,12 @@ decl_event!(
 mod tests {
 	use super::*;
 
+	use frame_support::{assert_ok, impl_outer_origin, parameter_types, weights::Weight};
 	use sp_core::H256;
-	use frame_support::{impl_outer_origin, assert_ok, parameter_types, weights::Weight};
 	use sp_runtime::{
-		traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
+		testing::Header,
+		traits::{BlakeTwo256, IdentityLookup},
+		Perbill,
 	};
 
 	impl_outer_origin! {
@@ -109,7 +114,10 @@ mod tests {
 	// This function basically just builds a genesis storage key/value store according to
 	// our desired mockup.
 	fn new_test_ext() -> sp_io::TestExternalities {
-		system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
+		system::GenesisConfig::default()
+			.build_storage::<Test>()
+			.unwrap()
+			.into()
 	}
 
 	#[test]
@@ -117,17 +125,35 @@ mod tests {
 		new_test_ext().execute_with(|| {
 			// Just a dummy test for the dummy function `do_something`
 			// calling the `do_something` function with a value 42
-			assert_ok!(PortablegabiModule::update_accumulator(Origin::signed(1), vec![1u8, 2u8, 3u8]));
-			assert_ok!(PortablegabiModule::update_accumulator(Origin::signed(1), vec![4u8, 5u8, 6u8]));
-			assert_ok!(PortablegabiModule::update_accumulator(Origin::signed(1), vec![7u8, 8u8, 9u8]));
+			assert_ok!(PortablegabiModule::update_accumulator(
+				Origin::signed(1),
+				vec![1u8, 2u8, 3u8]
+			));
+			assert_ok!(PortablegabiModule::update_accumulator(
+				Origin::signed(1),
+				vec![4u8, 5u8, 6u8]
+			));
+			assert_ok!(PortablegabiModule::update_accumulator(
+				Origin::signed(1),
+				vec![7u8, 8u8, 9u8]
+			));
 
 			// There should be three accumulators inside the store
 			assert_eq!(PortablegabiModule::accumulator_count(1), 3);
 
 			// asserting that the stored value is equal to what we stored
-			assert_eq!(PortablegabiModule::accumulator_list((1, 0)), Some(vec![1u8, 2u8, 3u8]));
-			assert_eq!(PortablegabiModule::accumulator_list((1, 1)), Some(vec![4u8, 5u8, 6u8]));
-			assert_eq!(PortablegabiModule::accumulator_list((1, 2)), Some(vec![7u8, 8u8, 9u8]));
+			assert_eq!(
+				PortablegabiModule::accumulator_list((1, 0)),
+				Some(vec![1u8, 2u8, 3u8])
+			);
+			assert_eq!(
+				PortablegabiModule::accumulator_list((1, 1)),
+				Some(vec![4u8, 5u8, 6u8])
+			);
+			assert_eq!(
+				PortablegabiModule::accumulator_list((1, 2)),
+				Some(vec![7u8, 8u8, 9u8])
+			);
 		});
 	}
 }
