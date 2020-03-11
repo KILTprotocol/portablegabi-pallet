@@ -52,3 +52,5 @@ cargo doc --open
 ```
 
 or by visiting this site: [kilt.io/developers](https://kilt.io/developers/)
+
+![](./doc/web3_foundation_grants_badge_black.svg)
