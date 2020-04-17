@@ -1,6 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure};
+use frame_support::{
+	decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
+	weights::SimpleDispatchInfo,
+};
 use rstd::vec::Vec;
 use system::ensure_signed;
 
@@ -14,11 +17,11 @@ decl_storage! {
 	trait Store for Module<T: Trait> as TemplateModule {
 		/// The AccumulatorList contains all accumulator. It is a map which
 		/// maps an account id and an index to an accumulator
-		AccumulatorList get(accumulator_list): map (T::AccountId, u64) => Option<Vec<u8>>;
+		AccumulatorList get(accumulator_list): map hasher(opaque_blake2_256) (T::AccountId, u64) => Option<Vec<u8>>;
 
 		/// The AccumulatorCounter stores for each attester the number of
 		/// accumulator updates.
-		AccumulatorCount get(accumulator_count): map T::AccountId => u64;
+		AccumulatorCount get(accumulator_count): map hasher(opaque_blake2_256) T::AccountId => u64;
 	}
 }
 
@@ -28,17 +31,18 @@ decl_module! {
 		fn deposit_event() = default;
 
 		/// Updates the attestation
+		#[weight = SimpleDispatchInfo::FixedNormal(100)]
 		pub fn update_accumulator(origin, accumulator: Vec<u8>) -> DispatchResult {
 			let attester = ensure_signed(origin)?;
 
-			let counter = if !<AccumulatorCount<T>>::exists(&attester) {
+			let counter = if !<AccumulatorCount<T>>::contains_key(&attester) {
 				0
 			} else {
 				<AccumulatorCount<T>>::get(&attester)
 			};
 
 			let next = counter.checked_add(1).ok_or("Overflow increasing accumulator index")?;
-			ensure!(!<AccumulatorList<T>>::exists((&attester, next)),
+			ensure!(!<AccumulatorList<T>>::contains_key((&attester, next)),
 					"Inconsistent accumulator counter");
 
 			<AccumulatorList<T>>::insert((&attester, counter), &accumulator);
@@ -105,6 +109,9 @@ mod tests {
 		type AvailableBlockRatio = AvailableBlockRatio;
 		type Version = ();
 		type ModuleToIndex = ();
+		type AccountData = ();
+		type OnNewAccount = ();
+		type OnKilledAccount = ();
 	}
 	impl Trait for Test {
 		type Event = ();
