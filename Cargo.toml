@@ -1,6 +1,6 @@
 [package]
 name = "portablegabi-pallet"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["KILT <info@kilt.io>"]
 edition = "2018"
 
@@ -18,48 +18,48 @@ std = [
 [dependencies.serde]
 features = ["derive"]
 optional = true
-version = "1.0.101"
+version = "1.0.111"
 
 [dependencies.codec]
 default-features = false
 features = ["derive"]
 package = "parity-scale-codec"
-version = "1.0.0"
+version = "1.3.0"
 
 [dependencies.sp-runtime]
 default-features = false
 git = "https://github.com/paritytech/substrate.git"
 rev = "3e651110aa06aa835790df63410a29676243fc54"
-version = "2.0.0"
+version = "2.0.0-rc2"
 
 [dependencies.frame-support]
 default-features = false
 git = "https://github.com/paritytech/substrate.git"
 rev = "3e651110aa06aa835790df63410a29676243fc54"
-version = "2.0.0"
+version = "2.0.0-rc2"
 
 [dependencies.system]
 default-features = false
 git = "https://github.com/paritytech/substrate.git"
 package = "frame-system"
 rev = "3e651110aa06aa835790df63410a29676243fc54"
-version = "2.0.0"
+version = "2.0.0-rc2"
 
 [dependencies.sp-io]
 default-features = false
 git = "https://github.com/paritytech/substrate.git"
 rev = "3e651110aa06aa835790df63410a29676243fc54"
-version = "2.0.0"
+version = "2.0.0-rc2"
 
 [dependencies.rstd]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 package = 'sp-std'
 rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = "2.0.0"
+version = "2.0.0-rc2"
 
 [dev-dependencies.sp-core]
 default-features = false
 git = "https://github.com/paritytech/substrate.git"
 rev = "3e651110aa06aa835790df63410a29676243fc54"
-version = "2.0.0"
+version = "2.0.0-rc2"
