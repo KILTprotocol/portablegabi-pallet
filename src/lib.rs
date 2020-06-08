@@ -1,6 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure};
+use dispatch::DispatchError;
+use frame_support::{
+	decl_event, decl_module, decl_storage,
+	dispatch::{self, DispatchResult},
+};
 use rstd::vec::Vec;
 use system::ensure_signed;
 
@@ -14,11 +18,11 @@ decl_storage! {
 	trait Store for Module<T: Trait> as TemplateModule {
 		/// The AccumulatorList contains all accumulator. It is a map which
 		/// maps an account id and an index to an accumulator
-		AccumulatorList get(accumulator_list): map (T::AccountId, u64) => Option<Vec<u8>>;
+		AccumulatorList get(fn accumulator_list): map hasher(opaque_blake2_256) (T::AccountId, u64) => Option<Vec<u8>>;
 
 		/// The AccumulatorCounter stores for each attester the number of
 		/// accumulator updates.
-		AccumulatorCount get(accumulator_count): map T::AccountId => u64;
+		AccumulatorCount get(fn accumulator_count): map hasher(opaque_blake2_256) T::AccountId => u64;
 	}
 }
 
@@ -28,24 +32,27 @@ decl_module! {
 		fn deposit_event() = default;
 
 		/// Updates the attestation
+		#[weight = 1]
 		pub fn update_accumulator(origin, accumulator: Vec<u8>) -> DispatchResult {
 			let attester = ensure_signed(origin)?;
 
-			let counter = if !<AccumulatorCount<T>>::exists(&attester) {
-				0
+			// if attester didn't store any accumulators, this will be 0
+			// 0 is the default value for new keys.
+			let counter = <AccumulatorCount<T>>::get(&attester);
+
+			// new counter value
+			let next = counter.checked_add(1).ok_or("accumulator overflow")?;
+
+			// set bytes at index `counter` to accumulator
+			// update counter to `next`
+			if !<AccumulatorList<T>>::contains_key((attester.clone(), counter)) {
+				<AccumulatorList<T>>::insert((attester.clone(), counter), &accumulator);
+				<AccumulatorCount<T>>::insert(&attester, next);
+				Self::deposit_event(RawEvent::Updated(attester, next, accumulator));
+				Ok(())
 			} else {
-				<AccumulatorCount<T>>::get(&attester)
-			};
-
-			let next = counter.checked_add(1).ok_or("Overflow increasing accumulator index")?;
-			ensure!(!<AccumulatorList<T>>::exists((&attester, next)),
-					"Inconsistent accumulator counter");
-
-			<AccumulatorList<T>>::insert((&attester, counter), &accumulator);
-			<AccumulatorCount<T>>::insert(&attester, next);
-
-			Self::deposit_event(RawEvent::Updated(attester, next, accumulator));
-			Ok(())
+				Err(DispatchError::Other("inconsistent accumulator counter"))
+			}
 		}
 	}
 }
@@ -65,7 +72,16 @@ decl_event!(
 mod tests {
 	use super::*;
 
-	use frame_support::{assert_ok, impl_outer_origin, parameter_types, weights::Weight};
+	use frame_support::{
+		assert_ok, impl_outer_origin, parameter_types,
+		weights::{
+			constants::{
+				BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND,
+			},
+			Weight,
+		},
+	};
+	use sp_arithmetic::traits::Saturating;
 	use sp_core::H256;
 	use sp_runtime::{
 		testing::Header,
@@ -84,10 +100,15 @@ mod tests {
 	pub struct Test;
 	parameter_types! {
 		pub const BlockHashCount: u64 = 250;
-		pub const MaximumBlockWeight: Weight = 1024;
-		pub const MaximumBlockLength: u32 = 2 * 1024;
+		/// We allow for 2 seconds of compute with a 6 second average block time.
+		pub const MaximumBlockWeight: Weight = 2 * WEIGHT_PER_SECOND;
 		pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+		/// Assume 10% of weight for average on_initialize calls.
+		pub const MaximumExtrinsicWeight: Weight = AvailableBlockRatio::get()
+			.saturating_sub(Perbill::from_percent(10)) * MaximumBlockWeight::get();
+		pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
 	}
+
 	impl system::Trait for Test {
 		type Origin = Origin;
 		type Call = ();
@@ -101,14 +122,24 @@ mod tests {
 		type Event = ();
 		type BlockHashCount = BlockHashCount;
 		type MaximumBlockWeight = MaximumBlockWeight;
+		type DbWeight = RocksDbWeight;
+		type BlockExecutionWeight = BlockExecutionWeight;
+		type ExtrinsicBaseWeight = ExtrinsicBaseWeight;
+		type MaximumExtrinsicWeight = MaximumExtrinsicWeight;
 		type MaximumBlockLength = MaximumBlockLength;
 		type AvailableBlockRatio = AvailableBlockRatio;
 		type Version = ();
+
 		type ModuleToIndex = ();
+		type AccountData = ();
+		type OnNewAccount = ();
+		type OnKilledAccount = ();
 	}
+
 	impl Trait for Test {
 		type Event = ();
 	}
+
 	type PortablegabiModule = Module<Test>;
 
 	// This function basically just builds a genesis storage key/value store according to
