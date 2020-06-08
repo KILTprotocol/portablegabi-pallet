@@ -13,7 +13,6 @@ std = [
     "sp-runtime/std",
     "sp-io/std",
     "system/std",
-    "sp-arithmetic/std",
 ]
 
 [dependencies.serde]
