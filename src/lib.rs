@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use dispatch::DispatchError;
 use frame_support::{
 	decl_event, decl_module, decl_storage,
 	dispatch::{self, DispatchResult},
@@ -50,7 +51,7 @@ decl_module! {
 				Self::deposit_event(RawEvent::Updated(attester, next, accumulator));
 				Ok(())
 			} else {
-				Err(dispatch::DispatchError::Other("inconsistent accumulator counter"))
+				Err(DispatchError::Other("inconsistent accumulator counter"))
 			}
 		}
 	}
