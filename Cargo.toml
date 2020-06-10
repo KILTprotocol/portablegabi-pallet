@@ -3,6 +3,10 @@ name = "portablegabi-pallet"
 version = "0.3.0"
 authors = ["KILT <info@kilt.io>"]
 edition = "2018"
+repository = "https://github.com/KILTprotocol/portablegabi-pallet"
+homepage = "https://github.com/KILTprotocol/portablegabi"
+description = "RSA-B Accumulator storage for portablegabi anonymous credentials"
+license = "Unlicense"
 
 [features]
 default = ["std"]
