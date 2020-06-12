@@ -1,0 +1,19 @@
+name: Publish
+
+on:
+  release:
+    types: [published, created]
+
+jobs:
+  login:
+    runs-on: ubuntu-latest
+    steps:
+      - name: login
+        uses: actions-rs/cargo@v1
+        with:
+          command: login
+          args: ${{ secrets.CRATES_TOKEN }}
+      - name: publish
+        uses: actions-rs/cargo@v1
+        with:
+          command: publish
